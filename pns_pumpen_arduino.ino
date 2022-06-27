@@ -22,14 +22,15 @@ int        port     = 8883;
 const long interval = 1000;
 unsigned long previousMillis = 0;
 
+double PUMP_ML_TO_MS_MULTIPLIER = 1000;
 
 // PUMPEN
 unsigned int pump_1_pin = 13;
 unsigned long pump_1_timer = 0;
 
 // VENTILE
-unsigned int valve_1_pin = 12;
-unsigned long valve_1_timer = 0;
+unsigned int valve_b_pin = 12;
+unsigned long valve_b_timer = 0;
 
 
 
@@ -76,8 +77,8 @@ void setup() {
     mqttClient.onMessage(onMqttMessage);
 
     // TOPICS DER ANGESCHLOSSENEN HARDWARE ABONNIEREN
-    mqttClient.subscribe("pump_1");
-    mqttClient.subscribe("valve_1");
+    mqttClient.subscribe("pump/1");
+    mqttClient.subscribe("valve/B");
 
     // PINS setzen
     pinMode(12, OUTPUT);
@@ -99,8 +100,8 @@ void stopActions() {
     digitalWrite(pump_1_pin, LOW);
     sendActionStopMessage(1, true);
   }
-  if(digitalRead(valve_1_pin) == HIGH && currentMillis >= valve_1_timer) {
-    digitalWrite(valve_1_pin, LOW);
+  if(digitalRead(valve_b_pin) == HIGH && currentMillis >= valve_b_timer) {
+    digitalWrite(valve_b_pin, LOW);
     sendActionStopMessage(1, false);
   }
 }
@@ -112,21 +113,21 @@ void startAction(int actor, int duration) {
       // PinX on
       digitalWrite(pump_1_pin, HIGH);
       // setze Timer
-      pump_1_timer = millis() + (1000 * duration);
+      pump_1_timer = millis() + (PUMP_ML_TO_MS_MULTIPLIER * duration);
       break;
     case 2:
     // -Ventil 1
       // PinX on
-      digitalWrite(valve_1_pin, HIGH);
+      digitalWrite(valve_b_pin, HIGH);
       // setze Timer
-      valve_1_timer = millis() + (1000 * duration);
+      valve_b_timer = millis() + (PUMP_ML_TO_MS_MULTIPLIER * duration);
       break;
   }
 }
 
 void sendActionStopMessage(int actor, bool isPump) {
-  String topic = "pumpActionStop";
-  if(!isPump) topic = "valveActionStop";
+  String topic = "pump/ActionStop";
+  if(!isPump) topic = "valve/ActionStop";
   mqttClient.beginMessage(topic);
   mqttClient.print(actor);
   mqttClient.endMessage();
@@ -148,9 +149,9 @@ void onMqttMessage(int messageSize) {
   Serial.print(payload);
   Serial.println();
 
-  if(topic.equals("pump_1")) {
+  if(topic.equals("pump/1")) {
     startAction(1, payload.toInt());
-  } else if(topic.equals("valve_1")) {
+  } else if(topic.equals("valve/1")) {
     startAction(2, payload.toInt());
   }
 }
